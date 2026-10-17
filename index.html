@@ -671,7 +671,6 @@ pre.code {
    Constants
    ================================================================ */
 const SCHEMA = 'knowledge-grapher/v1';
-const SCHEMA_URL = 'https://nhinternesch.github.io/knowledge-grapher/knowledge-graph.schema.json';
 const STALE_DAYS = 60;
 const LS = {
     graph: 'kg.graph.v1',
@@ -1123,7 +1122,6 @@ function exampleGraph(x) {
    ================================================================ */
 function exportJson(g) {
     return JSON.stringify({
-        $schema: SCHEMA_URL,
         schema: SCHEMA,
         meta: g.meta.center ? { title: g.meta.title, center: g.meta.center, updated: g.meta.updated } : { title: g.meta.title, updated: g.meta.updated },
         entities: g.entities.map(e => {
@@ -2683,7 +2681,7 @@ const AGENT_TOOLS = [
     {
         name: 'load_graph',
         title: 'Open a graph from JSON',
-        description: 'Opens a graph from knowledge-graph.json content (schema "' + SCHEMA + '", described at ' + SCHEMA_URL + ') and shows it. Replaces the graph in this page; if it has unexported changes, the user is asked first. Invalid content returns readable errors.',
+        description: 'Opens a graph from knowledge-graph.json content (schema "' + SCHEMA + '": meta, entities and relations, as get_graph returns them) and shows it. Replaces the graph in this page; if it has unexported changes, the user is asked first. Invalid content returns readable errors.',
         inputSchema: { type: 'object', properties: { json: { type: 'string', description: 'The full knowledge-graph.json text' } }, required: ['json'] },
         execute: async ({ json } = {}) => {
             const res = parseGraph(typeof json === 'string' ? json : JSON.stringify(json));
