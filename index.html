@@ -251,21 +251,12 @@ h1.display {
     border-bottom: 1px solid var(--line);
 }
 .bar-status { margin-left: 8px; color: var(--danger); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.menu { position: relative; }
-.menu-pop {
-    position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; min-width: 220px; padding: 6px;
-    background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow-lg);
-    animation: fade .12s ease;
-}
-.menu-pop button {
-    display: block; width: 100%; text-align: left; padding: 8px 10px; border-radius: 7px;
-    background: none; border: none; cursor: pointer; font-size: 13.5px;
-}
-.menu-pop button:hover { background: var(--raised); }
-.menu-pop hr { border: none; border-top: 1px solid var(--line); margin: 6px 4px; }
 @media (max-width: 640px) {
     .bar, .start-top { gap: 6px; padding-left: 10px; padding-right: 10px; }
-    .bar-status, .wm-long { display: none; }
+    .bar-status, .wm-long, .bar .bl { display: none; }
+    .bar { gap: 4px; padding-left: 8px; padding-right: 8px; overflow-x: auto; scrollbar-width: none; }
+    .bar .btn { flex-shrink: 0; height: 30px; padding: 0 7px; font-size: 12.5px; border-radius: 8px; }
+    .bar .theme-btn { display: none; }
 }
 
 .canvas {
@@ -552,15 +543,8 @@ pre.code {
         <button class="btn btn-primary" id="btnAdd" title="Add an entity (A)">+ Add</button>
         <button class="btn" id="btnReview" title="Review what may be out of date (R)">Review <span class="badge" id="reviewBadge" hidden></span></button>
         <button class="btn" id="btnExport" title="Export (E)">Export</button>
-        <div class="menu">
-            <button class="btn btn-icon" id="btnMenu" aria-label="More" aria-haspopup="menu" aria-expanded="false">⋯</button>
-            <div class="menu-pop" id="menuPop" role="menu" hidden>
-                <button data-act="open" role="menuitem">Open JSON…</button>
-                <button data-act="fit" role="menuitem">Fit graph to screen</button>
-                <hr>
-                <button data-act="new" role="menuitem">Start a new graph…</button>
-            </div>
-        </div>
+        <button class="btn" data-act="open" title="Open a knowledge-graph.json">Open<span class="bl"> JSON</span></button>
+        <button class="btn btn-danger" data-act="delete" title="Delete this graph">Delete</button>
         <button class="btn btn-ghost btn-icon theme-btn" data-act="theme"></button>
     </header>
 
@@ -1794,7 +1778,6 @@ function showBanner(title) {
    Dialogs
    ================================================================ */
 function openDialog(id) {
-    closeMenu();
     const d = $(id);
     if (!d.open) d.showModal();
 }
@@ -2059,12 +2042,8 @@ $('openPasteBtn').addEventListener('click', () => {
 });
 
 /* ================================================================
-   Menu & theme
+   Theme
    ================================================================ */
-function openMenu() { $('menuPop').hidden = false; $('btnMenu').setAttribute('aria-expanded', 'true'); }
-function closeMenu() { $('menuPop').hidden = true; $('btnMenu').setAttribute('aria-expanded', 'false'); }
-$('btnMenu').addEventListener('click', ev => { ev.stopPropagation(); if ($('menuPop').hidden) openMenu(); else closeMenu(); });
-document.addEventListener('pointerdown', ev => { if (!$('menuPop').hidden && !ev.target.closest('.menu')) closeMenu(); });
 
 function currentTheme() {
     const t = document.documentElement.dataset.theme;
@@ -2086,8 +2065,8 @@ function toggleTheme() {
     updateThemeLabel();
 }
 
-async function newGraphFlow() {
-    const ok = await confirmBox('Start a new graph?', 'This clears the graph saved in this browser. Export it first if you want to keep it.', 'Clear and start over');
+async function deleteGraphFlow() {
+    const ok = await confirmBox('Delete this graph?', 'This clears the graph saved in this browser. Export it first if you want to keep it.', 'Delete');
     if (!ok) return;
     clearAll();
     showScreen('start');
@@ -2105,14 +2084,12 @@ function clearAll() {
 const ACTIONS = {
     open: openOpen,
     theme: toggleTheme,
-    fit: () => fit(true),
     add: openAdd,
-    new: newGraphFlow
+    delete: deleteGraphFlow
 };
 document.addEventListener('click', ev => {
     const b = ev.target.closest('[data-act]');
     if (!b) return;
-    closeMenu();
     ACTIONS[b.dataset.act]();
 });
 
@@ -2126,7 +2103,6 @@ function showScreen(name) {
 // The splash screen as it first loads: nothing selected, examples folded away.
 function goHome() {
     if (ui.selected) select(null);
-    closeMenu();
     $('exampleList').hidden = true;
     $('btnExamples').setAttribute('aria-expanded', 'false');
     showScreen('start');
@@ -2421,8 +2397,7 @@ $('startWordmark').addEventListener('click', goHome);
 document.addEventListener('keydown', ev => {
     if (document.querySelector('dialog[open]')) return;
     if (ev.key === 'Escape') {
-        if (!$('menuPop').hidden) closeMenu();
-        else if (isTyping()) document.activeElement.blur();
+        if (isTyping()) document.activeElement.blur();
         else if (ui.selected) select(null);
         return;
     }
