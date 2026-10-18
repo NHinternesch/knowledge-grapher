@@ -327,6 +327,8 @@ h1.display {
 .node.hl .label, .node.sel .label { fill: var(--ink); }
 .canvas.focus .node:not(.hl) { opacity: .22; }
 .canvas.focus .edge:not(.hl) { opacity: .15; }
+.canvas .node.out, .canvas .edge.out { opacity: .07; pointer-events: none; }
+.canvas .edge-label.out { opacity: 0; }
 
 .legend {
     position: absolute; right: 14px; top: 66px; z-index: 5;
@@ -336,8 +338,18 @@ h1.display {
     -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
     border: 1px solid var(--line); border-radius: 10px;
 }
-.legend span { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.legend button {
+    display: flex; align-items: center; gap: 6px; white-space: nowrap;
+    margin: 0 -6px; padding: 2px 6px; border: 0; border-radius: 6px;
+    background: none; font: inherit; color: inherit; text-align: left; cursor: pointer;
+    transition: opacity .15s, background .15s;
+}
+.legend button:hover { background: var(--line); }
+.legend.filtering button[aria-pressed="false"] { opacity: .45; }
+.legend.filtering button[aria-pressed="false"]:hover { opacity: .8; }
 .legend em { font-style: normal; color: var(--ink-3); margin-left: auto; padding-left: 10px; }
+.legend .lg-clear { justify-content: center; margin-top: 2px; color: var(--ink-3); font-size: 11.5px; }
+.legend .lg-clear:hover { color: var(--ink); }
 @media (max-width: 640px) { .banner:not([hidden]) ~ .legend { top: 150px; } }
 .zoom {
     position: absolute; right: 14px; bottom: 40px; z-index: 5;
@@ -590,7 +602,7 @@ pre.code {
     <div class="empty-canvas" id="emptyCanvas" hidden>
         <div><h2>Your graph is empty</h2><button class="btn btn-primary" data-act="add">+ Add an entity</button></div>
     </div>
-    <div class="legend" id="legend" aria-label="Entity types"></div>
+    <div class="legend" id="legend" role="group" aria-label="Filter by entity type"></div>
     <div class="zoom">
         <button id="zoomIn" aria-label="Zoom in" title="Zoom in">+</button>
         <button id="zoomOut" aria-label="Zoom out" title="Zoom out">−</button>
@@ -957,7 +969,7 @@ let layout = {};               // id -> {x, y, pinned}
 const simNodes = new Map();    // id -> {id, x, y, vx, vy, fx, fy}
 let deg = new Map();
 let tints = new Map();         // type -> css color
-const ui = { selected: null, hover: null, pendingFit: false, focusConnect: false, lastRel: '' };
+const ui = { selected: null, hover: null, pendingFit: false, focusConnect: false, lastRel: '', filter: new Set() };
 const view = { x: 0, y: 0, k: 1 };
 let saveTimer = 0;
 
@@ -1439,13 +1451,32 @@ function applyHighlight() {
     for (const [id, el] of nodeEls) {
         el.g.classList.toggle('hl', near.has(id));
         el.g.classList.toggle('sel', id === ui.selected);
+        const out = !shown(id);
+        el.g.classList.toggle('out', out);
+        el.g.setAttribute('tabindex', out ? '-1' : '0');
     }
     for (const ed of edgeEls) {
         const on = !!f && (ed.r.from === f || ed.r.to === f);
+        const out = !shown(ed.r.from) || !shown(ed.r.to);
         ed.line.classList.toggle('hl', on);
         ed.label.classList.toggle('hl', on);
+        ed.line.classList.toggle('out', out);
+        ed.label.classList.toggle('out', out);
         ed.line.setAttribute('marker-end', on ? 'url(#arwHi)' : 'url(#arw)');
     }
+}
+// The legend filter: with types picked, only those (plus the center and the selection) stay on the canvas.
+function shown(id) {
+    if (!ui.filter.size || isCenter(id) || id === ui.selected) return true;
+    const e = ent(id);
+    return !e || ui.filter.has(e.type);
+}
+function toggleFilter(t) {
+    if (t == null) ui.filter.clear();
+    else if (!ui.filter.delete(t)) ui.filter.add(t);
+    if (ui.hover && !shown(ui.hover)) ui.hover = null;
+    refreshChrome();
+    applyHighlight();
 }
 
 /* ----- view: pan & zoom ----- */
@@ -1649,7 +1680,14 @@ function refreshChrome() {
     lg.textContent = '';
     const counts = new Map();
     for (const e of graph.entities) if (!isCenter(e.id)) counts.set(e.type, (counts.get(e.type) || 0) + 1);
-    for (const [t, c] of counts) lg.append(h('span', null, h('i', { class: 'dot', style: `background:${tints.get(t)}` }), cap(t), h('em', null, String(c))));
+    // A type can vanish (last entity renamed or deleted): drop it from the filter and redraw.
+    const gone = [...ui.filter].filter(t => !counts.has(t));
+    if (gone.length) { gone.forEach(t => ui.filter.delete(t)); applyHighlight(); }
+    for (const [t, c] of counts) lg.append(h('button', { type: 'button', 'aria-pressed': String(ui.filter.has(t)),
+        title: ui.filter.has(t) ? `Stop showing only ${t}` : `Show only ${t}`, onclick: () => toggleFilter(t) },
+        h('i', { class: 'dot', style: `background:${tints.get(t)}` }), cap(t), h('em', null, String(c))));
+    if (ui.filter.size) lg.append(h('button', { type: 'button', class: 'lg-clear', onclick: () => toggleFilter(null) }, 'Show all'));
+    lg.classList.toggle('filtering', ui.filter.size > 0);
     lg.hidden = !counts.size;
 
     const stale = staleEntities().length;
@@ -2129,7 +2167,7 @@ function clearAll() {
     graph = null;
     layout = {};
     simNodes.clear();
-    ui.selected = null; ui.hover = null;
+    ui.selected = null; ui.hover = null; ui.filter.clear();
     [LS.graph, LS.layout, LS.example, LS.exported].forEach(lsDel);
     $('banner').hidden = true;
     renderPanel();
@@ -2182,7 +2220,7 @@ function setGraph(g, opts) {
     const o = opts || {};
     graph = g;
     simNodes.clear();
-    ui.selected = null; ui.hover = null;
+    ui.selected = null; ui.hover = null; ui.filter.clear();
     if (!o.keepLayout) layout = {};
     showScreen('app');
     resetView();
@@ -2453,6 +2491,7 @@ document.addEventListener('keydown', ev => {
     if (ev.key === 'Escape') {
         if (isTyping()) document.activeElement.blur();
         else if (ui.selected) select(null);
+        else if (ui.filter.size && !$('app').hidden) toggleFilter(null);
         return;
     }
     if ($('app').hidden || isTyping() || ev.metaKey || ev.ctrlKey || ev.altKey) return;
