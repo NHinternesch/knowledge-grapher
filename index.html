@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Knowledge Grapher</title>
-<meta name="description" content="From zero to knowledge graph. Make a knowledge graph for anything (yourself, your work, a project, a tool, a topic or an idea), keep it current, and use it with AI as JSON and Markdown.">
+<meta name="description" content="From zero to knowledge graph. Tap into structured context. Make a knowledge graph for anything: person, job, project, tool, topic, idea. Integrate with AI tooling as JSON and Markdown. For humans and agents.">
 <link rel="canonical" href="https://nhinternesch.github.io/knowledge-grapher/">
 <meta name="author" content="Nicolas Hinternesch">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Knowledge Grapher">
-<meta property="og:description" content="Make a knowledge graph for anything, keep it current, and use it with AI as JSON and Markdown.">
+<meta property="og:description" content="Tap into structured context. Make a knowledge graph for anything and integrate it with AI tooling as JSON and Markdown.">
 <meta property="og:url" content="https://nhinternesch.github.io/knowledge-grapher/">
 <meta name="twitter:card" content="summary">
 <script type="application/ld+json">
@@ -18,7 +18,7 @@
     "@type": "WebApplication",
     "name": "Knowledge Grapher",
     "url": "https://nhinternesch.github.io/knowledge-grapher/",
-    "description": "Make a knowledge graph for anything (a person, a role, a project, a tool, a topic or an idea), keep it current, and export it as JSON and Markdown for AI tools. Runs entirely in the browser; the graph stays in local storage until exported.",
+    "description": "Make a knowledge graph for anything (a person, a job, a project, a tool, a topic or an idea) and integrate it with AI tooling as JSON and Markdown. Runs entirely in the browser; the graph stays in local storage until exported.",
     "applicationCategory": "ProductivityApplication",
     "operatingSystem": "Any",
     "browserRequirements": "Requires JavaScript",
@@ -644,7 +644,7 @@ pre.code {
     <div class="dlg">
         <button type="button" class="x-close" data-close aria-label="Close">×</button>
         <h2 id="openTitle">Open a graph</h2>
-        <p class="sub">Load a <code>knowledge-graph.json</code>.</p>
+        <p class="sub">Load a <code>knowledge-graph.json</code></p>
         <label class="drop" id="drop"><input type="file" id="fileInput" accept=".json,application/json" hidden>Choose a file</label>
         <details class="paste">
             <summary>Or paste JSON</summary>
@@ -2334,7 +2334,7 @@ function updateSeedNav() {
     const st = SEED_STEPS[seed.i];
     const last = seed.i === SEED_STEPS.length - 1;
     const empty = st.kind !== 'center' && !seed.lists[st.key].length && !(seed.ci && seed.ci.input.value.trim());
-    $('seedNext').textContent = st.kind === 'center' && !seed.name ? 'Start empty'
+    $('seedNext').textContent = st.kind === 'center' && !seed.name ? 'Start blank'
         : last ? 'Build my graph →' : (empty ? 'Skip' : 'Next');
     const n = seedTotal();
     $('seedCount').textContent = n ? `${truncate(seed.name, 24)} + ${plural(n, 'thing')}` : '';
