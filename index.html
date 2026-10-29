@@ -224,7 +224,6 @@ h1.display {
     transition: border-color .12s, box-shadow .15s, transform .15s;
 }
 .example:hover { border-color: var(--line-2); box-shadow: var(--shadow); transform: translateY(-1px); }
-.example .kicker { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-3); margin-bottom: 6px; }
 .example b { display: block; font-weight: 600; margin-bottom: 2px; }
 .example .blurb { display: block; color: var(--ink-2); font-size: 13px; line-height: 1.45; }
 .start-top .row { gap: 4px; flex-wrap: nowrap; }
@@ -479,7 +478,6 @@ dialog[open] { animation: dlgIn .2s cubic-bezier(.2, .8, .2, 1); }
     transition: border-color .12s, background .12s;
 }
 .drop:hover, .drop.over { border-color: var(--ink-3); background: var(--raised); }
-.drop b { color: var(--ink); }
 .paste { margin-top: 14px; }
 .paste summary { cursor: pointer; font-size: 13px; color: var(--ink-2); padding: 4px 0; }
 .paste textarea { margin-top: 8px; font-family: var(--mono); font-size: 12px; }
@@ -544,7 +542,7 @@ pre.code {
     <main class="start-main">
         <svg class="hero" id="hero" viewBox="-250 -150 500 285" role="img" aria-label="A small knowledge graph"></svg>
         <h1 class="display">From zero to<br>knowledge graph</h1>
-        <p class="lede">Tap into structured context. Make a knowledge graph for anything. Person, job, project, tool, topic, idea. Seed it in minutes, keep it current, integrate with AI tooling as JSON and Markdown. For humans and agents.</p>
+        <p class="lede">Tap into structured context. Make a knowledge graph for anything. Person, job, project, tool, topic, idea. Integrate with AI tooling as JSON and Markdown. For humans and agents.</p>
         <div class="cta">
             <button class="btn btn-primary btn-lg" id="btnStartBlank">Start blank</button>
             <button class="btn btn-lg" id="btnExamples" aria-expanded="false">Start from example</button>
@@ -646,10 +644,10 @@ pre.code {
     <div class="dlg">
         <button type="button" class="x-close" data-close aria-label="Close">×</button>
         <h2 id="openTitle">Open a graph</h2>
-        <p class="sub">Load a <code>knowledge-graph.json</code> from a file or from a repository.</p>
-        <label class="drop" id="drop"><input type="file" id="fileInput" accept=".json,application/json" hidden><b>Choose</b> or drop file</label>
+        <p class="sub">Load a <code>knowledge-graph.json</code>.</p>
+        <label class="drop" id="drop"><input type="file" id="fileInput" accept=".json,application/json" hidden>Choose a file</label>
         <details class="paste">
-            <summary>Or paste the JSON</summary>
+            <summary>Or paste JSON</summary>
             <textarea class="textarea" id="openPaste" rows="6" placeholder='{ "schema": "knowledge-grapher/v1", … }'></textarea>
             <div class="dlg-actions"><button type="button" class="btn" id="openPasteBtn">Load pasted JSON</button></div>
         </details>
@@ -852,15 +850,17 @@ const KINDS = [
     { type: 'idea', label: 'Idea', ph: 'e.g. Build knowledge grapher', part: 'feature',
       rel: { people: 'involves', parts: 'includes', tools: 'uses', topics: 'related to' } }
 ];
-const kindOf = type => KINDS.find(k => k.type === type) || KINDS[3];
+// "Other" (or no choice) builds like a topic and shows no example name.
+const OTHER_KIND = { type: 'other', label: 'Other' };
+const kindOf = type => { const k = KINDS.find(k => k.type === type); return k || { ...KINDS[3], ph: '' }; };
 
 const SEED_STEPS = [
     { kind: 'center', title: 'What is this graph about?' },
-    { key: 'people', type: 'person', title: 'Who is involved?', placeholder: 'e.g. Maya Chen' },
-    { key: 'parts', title: 'What is part of it?', placeholder: 'e.g. Launch plan' },
-    { key: 'tools', type: 'tool', title: 'Which tools and resources?', placeholder: 'e.g. Notion',
+    { key: 'people', type: 'person', title: 'Who is involved?' },
+    { key: 'parts', title: 'What is part of it?' },
+    { key: 'tools', type: 'tool', title: 'Which tools and resources?',
       suggest: ['Notion', 'Google Drive', 'Slack', 'GitHub', 'Figma', 'Excel'] },
-    { key: 'topics', type: 'topic', title: 'Which topics and ideas relate?', placeholder: 'e.g. Pricing' }
+    { key: 'topics', type: 'topic', title: 'Which topics and ideas relate?' }
 ];
 
 const HERO_WORDS = ['Anything', 'A person', 'A job', 'A project', 'A tool', 'A topic', 'An idea'];
@@ -2245,7 +2245,6 @@ function renderExamples() {
     list.textContent = '';
     for (const x of EXAMPLES) {
         list.append(h('button', { class: 'example', onclick: async () => { if (await okToReplace()) loadExample(x); } },
-            h('span', { class: 'kicker' }, x.kind),
             h('b', null, x.title),
             h('span', { class: 'blurb' }, x.blurb)));
     }
@@ -2335,14 +2334,14 @@ function updateSeedNav() {
     const st = SEED_STEPS[seed.i];
     const last = seed.i === SEED_STEPS.length - 1;
     const empty = st.kind !== 'center' && !seed.lists[st.key].length && !(seed.ci && seed.ci.input.value.trim());
-    $('seedNext').textContent = st.kind === 'center' && !seed.name ? 'Skip, start empty'
+    $('seedNext').textContent = st.kind === 'center' && !seed.name ? 'Start empty'
         : last ? 'Build my graph →' : (empty ? 'Skip' : 'Next');
     const n = seedTotal();
     $('seedCount').textContent = n ? `${truncate(seed.name, 24)} + ${plural(n, 'thing')}` : '';
 }
-function chipInput(items, placeholder, tint, onChange, onEnterEmpty) {
+function chipInput(items, label, tint, onChange, onEnterEmpty) {
     const box = h('div', { class: 'chips' });
-    const input = h('input', { placeholder, 'aria-label': placeholder, autocomplete: 'off', enterkeyhint: 'enter' });
+    const input = h('input', { 'aria-label': label, autocomplete: 'off', enterkeyhint: 'enter' });
     function render() {
         box.querySelectorAll('.chip').forEach(c => c.remove());
         items.forEach((t, i) => {
@@ -2354,7 +2353,7 @@ function chipInput(items, placeholder, tint, onChange, onEnterEmpty) {
                     render(); onChange(); input.focus();
                 } }, '×')), input);
         });
-        input.placeholder = items.length ? 'Add another…' : placeholder;
+        input.placeholder = items.length ? 'Add another…' : '';
     }
     function add(raw) {
         let changed = false;
@@ -2400,16 +2399,16 @@ function renderSeed() {
     body.textContent = '';
     seed.ci = null;
     if (st.kind === 'center') {
-        const nameIn = h('input', { class: 'input', placeholder: seed.kind ? k.ph : 'e.g. Portfolio website', value: seed.name, autocomplete: 'off', 'aria-label': 'What this graph is about' });
-        const noteIn = h('input', { class: 'input', placeholder: 'One line of context: goal, status, timeframe (optional)', value: seed.note, 'aria-label': 'Context' });
+        const nameIn = h('input', { class: 'input', placeholder: k.ph, value: seed.name, autocomplete: 'off', 'aria-label': 'What this graph is about' });
+        const noteIn = h('input', { class: 'input', placeholder: 'Description (optional)', value: seed.note, 'aria-label': 'Context' });
         nameIn.addEventListener('input', () => { seed.name = nameIn.value.trim(); updateSeedNav(); });
         noteIn.addEventListener('input', () => { seed.note = noteIn.value.trim(); });
         const kinds = h('div', { class: 'kinds', role: 'group', 'aria-label': 'It is a' });
         const renderKinds = () => {
             kinds.textContent = '';
-            for (const kd of KINDS) kinds.append(h('button', { type: 'button', 'aria-pressed': String(seed.kind === kd.type), onclick: () => {
+            for (const kd of [...KINDS, OTHER_KIND]) kinds.append(h('button', { type: 'button', 'aria-pressed': String(seed.kind === kd.type), onclick: () => {
                 seed.kind = seed.kind === kd.type ? '' : kd.type;
-                nameIn.placeholder = seed.kind ? kd.ph : 'e.g. Portfolio website';
+                nameIn.placeholder = kindOf(seed.kind).ph;
                 renderKinds();
                 nameIn.focus();
             } }, kd.label));
@@ -2422,7 +2421,7 @@ function renderSeed() {
         nameIn.focus();
     } else {
         const items = seed.lists[st.key];
-        const ci = chipInput(items, st.placeholder, SEED_TINT[st.key], updateSeedNav, seedNext);
+        const ci = chipInput(items, st.title, SEED_TINT[st.key], updateSeedNav, seedNext);
         seed.ci = ci;
         body.append(ci.el);
         if (st.suggest) {
